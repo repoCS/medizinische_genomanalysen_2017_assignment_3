@@ -1,24 +1,40 @@
 #!/usr/bin/env python2
 
+'''
+Assignment 2 - Medizinische Genomanalyse
+von Clemens Spielvogel
+
+Das Skript muss mit Python 2 ausgefuehrt werden!
+
+VOR DEM AUSFUEHREN muss der absolute Pfad der vcf-Dateien fuer die drei Personen, in den vcf Variablen (Zeile 22 - 24)
+angegeben werden!
+'''
+
 import vcf
 from vcf import utils
 import hgvs
+import hgvs.dataproviders.uta
+import hgvs.parser
+import hgvs.assemblymapper
+from bioutils.assemblies import make_name_ac_map
 
 __author__ = 'Clemens Spielvogel'
 
+vcf_son = "/home/vortex/Bioinformatik/med_genomanalyse/AmpliseqExome.20141120.NA24385.vcf"
+vcf_mother = "/home/vortex/Bioinformatik/med_genomanalyse/AmpliseqExome.20141120.NA24143.vcf"
+vcf_father = "/home/vortex/Bioinformatik/med_genomanalyse/AmpliseqExome.20141120.NA24149.vcf"
 
 class Assignment3:
-    def __init__(self):
+    def __init__(self, vcf_son, vcf_mother, vcf_father):
+        self.vcf_son = vcf_son
+        self.vcf_mother = vcf_mother
+        self.vcf_father = vcf_father
+
         # Check if pyvcf is installed
         print "PyVCF version: %s" % vcf.VERSION
 
         # Check if hgvs is installed
         print "HGVS version: %s" % hgvs.__version__
-
-        # Initialize reader for the three vcf files
-        self.vcf_reader_mother = vcf.Reader(open('AmpliseqExome.20141120.NA24143.vcf', 'r'))
-        self.vcf_reader_father = vcf.Reader(open('AmpliseqExome.20141120.NA24149.vcf', 'r'))
-        self.vcf_reader_son = vcf.Reader(open('AmpliseqExome.20141120.NA24385.vcf', 'r'))
 
 
     def get_total_number_of_variants_mother(self):
@@ -26,8 +42,13 @@ class Assignment3:
         Return the total number of identified variants in the mother
         :return:
         '''
+
+        print "\n---------------"
+
+        vcf_readermother = vcf.Reader(open(self.vcf_mother, 'r'))
+
         number_of_variants_mother = 0
-        for record in self.vcf_reader_mother:
+        for record in vcf_readermother:
             number_of_variants_mother += 1
 
         print "Number of variants (mother):", number_of_variants_mother
@@ -39,8 +60,13 @@ class Assignment3:
         Return the total number of identified variants in the father
         :return:
         '''
+
+        print "\n---------------"
+
+        vcf_readerfather = vcf.Reader(open(self.vcf_father, 'r'))
+
         number_of_variants_father = 0
-        for record in self.vcf_reader_father:
+        for record in vcf_readerfather:
             number_of_variants_father += 1
 
         print "Number of variants (father):", number_of_variants_father
@@ -52,9 +78,15 @@ class Assignment3:
         Return the number of identified variants shared by father and son
         :return:
         '''
+
+        print "\n---------------\nVariants shared by father and son:"
+
+        vcf_readerfather = vcf.Reader(open(self.vcf_father, 'r'))
+        vcf_readerson = vcf.Reader(open(self.vcf_son, 'r'))
+
         records = 0
-        for record in self.vcf_reader_father:
-            if record in self.vcf_reader_son:
+        for record in vcf_readerfather:
+            if record in vcf_readerson:
                 records += 1
 
         print records
@@ -66,9 +98,15 @@ class Assignment3:
         Return the number of identified variants shared by mother and son
         :return:
         '''
+
+        print "\n---------------\nVariants shared by mother and son:"
+
+        vcf_readermother = vcf.Reader(open(self.vcf_mother, 'r'))
+        vcf_readerson = vcf.Reader(open(self.vcf_son, 'r'))
+
         records = 0
-        for record in self.vcf_reader_mother:
-            if record in self.vcf_reader_son:
+        for record in vcf_readermother:
+            if record in vcf_readerson:
                 records += 1
 
         print records
@@ -80,9 +118,16 @@ class Assignment3:
         Return the number of identified variants shared by father, mother and son
         :return:
         '''
+
+        print "\n---------------\nVariants shared by father, mother and son:"
+
+        vcf_readerson = vcf.Reader(open(self.vcf_son, 'r'))
+        vcf_readermother = vcf.Reader(open(self.vcf_mother, 'r'))
+        vcf_readerfather = vcf.Reader(open(self.vcf_father, 'r'))
+
         records = 0
-        for record in self.vcf_reader_father:
-            if record in self.vcf_reader_son and record in self.vcf_reader_mother:
+        for record in vcf_readerfather:
+            if record in vcf_readerson and record in vcf_readermother:
                 records += 1
 
         print records
@@ -94,15 +139,22 @@ class Assignment3:
         Creates one VCF containing all variants of the trio (merge VCFs)
         :return:
         '''
-        merge_file = open("merge_file.vcf", "w")
-        writer = vcf.Writer(merge_file, self.vcf_reader_mother, "\n")
 
-        for records in utils.walk_together(self.vcf_reader_mother, self.vcf_reader_father, self.vcf_reader_son):
+        print "\n---------------\nMerging files.."
+
+        vcf_readerson = vcf.Reader(open(self.vcf_son, 'r'))
+        vcf_readermother = vcf.Reader(open(self.vcf_mother, 'r'))
+        vcf_readerfather = vcf.Reader(open(self.vcf_father, 'r'))
+
+        merge_file = open("merge_file.vcf", "w")
+        writer = vcf.Writer(merge_file, vcf_readermother, "\n")
+
+        for records in utils.walk_together(vcf_readermother, vcf_readerfather, vcf_readerson):
             for entry in records:
                 if entry is not None:
                     writer.write_record(entry)
 
-        print("Successfully merged files.")
+        print("Successfully merged files: Outputfile = merge_file.vcf")
 
 
     def convert_first_variants_of_son_into_HGVS(self):
@@ -112,7 +164,58 @@ class Assignment3:
         - https://hgvs.readthedocs.io/en/master/examples/manuscript-example.html#project-genomic-variant-to-a-new-transcript
         :return:
         '''
-        print("TODO")
+
+        print "\n---------------\nConverting first 100 variants of son to HGVS.."
+
+        vcf_readerson = vcf.Reader(open(self.vcf_son, 'r'))
+        output_file = open("hgvs_file", "w")
+
+        proccessed_variants = 0
+        succ_proc_variants = 0
+        exceptions = 0
+
+        # UTA Verbindung
+        uta = hgvs.dataproviders.uta.connect()
+        assembly_mapper = hgvs.assemblymapper.AssemblyMapper(uta, normalize=False)
+
+        # Parsing
+        hgvs_parser = hgvs.parser.Parser()
+
+        for read in vcf_readerson:
+            if proccessed_variants < 100:
+                refseq_nc_number = make_name_ac_map("GRCh37.p13")[read.CHROM[3:]]
+                genome_hgvs ="{}:g.{}{}>{}".format(refseq_nc_number, str(read.POS), str(read.REF), str(read.ALT[0]))
+
+                try:
+                    hgvs_variant = hgvs_parser.parse_hgvs_variant(genome_hgvs)
+                    for transcript in assembly_mapper.relevant_transcripts(hgvs_variant):
+                        try:
+                            coding = assembly_mapper.g_to_c(hgvs_variant, transcript)
+                            succ_proc_variants += 1
+                            print "{}\t{}".format(hgvs_variant, coding)
+                            output_file.write("{}\t{}".format(hgvs_variant, coding))
+
+                        except hgvs.exceptions.HGVSUsageError:
+                            noncoding = assembly_mapper.g_to_n(hgvs_variant, transcript)
+                            succ_proc_variants += 1
+                            print "{}\t{}".format(hgvs_variant, noncoding)
+                            output_file.write("{}\t{}".format(hgvs_variant, noncoding))
+
+                        except:
+                            exceptions += 1
+
+                except Exception:
+                    exceptions += 1
+
+            else:
+                break
+
+            proccessed_variants += 1
+
+        output_file.close()
+
+        print "Successful conversions: %s" % (succ_proc_variants)
+        print "Exceptions occurred: %s" % (exceptions)
 
 
     def print_summary(self):
@@ -127,6 +230,6 @@ class Assignment3:
 
 
 if __name__ == '__main__':
-    print("Assignment 3")
-    assignment1 = Assignment3()
-assignment1.print_summary()
+    print "Assignment 3"
+    assignment1 = Assignment3(vcf_son , vcf_mother, vcf_father)
+    assignment1.print_summary()
