@@ -63,11 +63,11 @@ class Assignment3:
 
         print "\n---------------"
 
-        vcf_readerfather = vcf.Reader(open(self.vcf_father, 'r'))
+        vcf_readerfather = vcf.Reader(open(self.vcf_father, 'r'))   # Readerfunktion fuer vcf oeffnen
 
-        number_of_variants_father = 0
-        for record in vcf_readerfather:
-            number_of_variants_father += 1
+        number_of_variants_father = 0   # Initialisierung der Variable fuer gemeinsame Varianten
+        for record in vcf_readerfather:     # Iteration durch Reader
+            number_of_variants_father += 1  # Erhoehung um Eins fuer jede gemeinsame Variante
 
         print "Number of variants (father):", number_of_variants_father
         return number_of_variants_father
@@ -85,8 +85,8 @@ class Assignment3:
         vcf_readerson = vcf.Reader(open(self.vcf_son, 'r'))
 
         records = 0
-        for record in vcf_readerfather:
-            if record in vcf_readerson:
+        for record in vcf.utils.walk_together(vcf_readerfather, vcf_readerson):
+            if not record[0] is None and not record[1] is None:
                 records += 1
 
         print records
@@ -105,8 +105,9 @@ class Assignment3:
         vcf_readerson = vcf.Reader(open(self.vcf_son, 'r'))
 
         records = 0
-        for record in vcf_readermother:
-            if record in vcf_readerson:
+        records = 0
+        for record in vcf.utils.walk_together(vcf_readerson, vcf_readermother):
+            if not record[0] is None and not record[1] is None:
                 records += 1
 
         print records
@@ -126,8 +127,8 @@ class Assignment3:
         vcf_readerfather = vcf.Reader(open(self.vcf_father, 'r'))
 
         records = 0
-        for record in vcf_readerfather:
-            if record in vcf_readerson and record in vcf_readermother:
+        for record in vcf.utils.walk_together(vcf_readerson, vcf_readermother, vcf_readerfather):
+            if not record[0] is None and not record[1] is None and not record[2] is None:
                 records += 1
 
         print records
